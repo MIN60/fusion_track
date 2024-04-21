@@ -43,8 +43,6 @@ private:
     ros::Subscriber is_curve_sub_;
     ros::Subscriber ready_curve_sub_;
 
-    //int gear_msg;  // 만약 gear 데이터가 Int32 타입 예상, 이거 바꿔줄거임
-
 public:
     VehicleControl();
     void updateControlCmd(double target_velocity);
@@ -52,14 +50,10 @@ public:
     void ldControl();
     void steerCallback(const std_msgs::Float32::ConstPtr& steer_data);
     void velocityCallback(const control_msgs::Velocity::ConstPtr& speed_data);
-    //void gearCallback(const std_msgs::Float64::ConstPtr& gear_data); 
     int is_curve_;
     bool ready_curve;
-    //ros::Subscriber is_curve_sub_;
 
-    //void isCurveCallback(const std_msgs::Bool::ConstPtr& msg);
     void isCurveCallback(const fusion_track::IsCurve::ConstPtr& msg);
-
     void readyCurveCallback(const fusion_track::ReadyToCurve::ConstPtr& ReadyToCurve);
     bool Ready;
     double ReadyToCurve_x_y;

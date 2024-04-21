@@ -36,26 +36,12 @@ VehicleControl::VehicleControl() : nh_(),pid_controller_(1.0, 0.4, 0.35, 0.1), p
     y_diff_sub_ = nh_.subscribe("/y_center_diff", 5, &VehicleControl::yDiffCallback, this);
     velocity_sub_ = nh_.subscribe("/ERP42_velocity", 1, &VehicleControl::velocityCallback, this);
     steer_sub = nh_.subscribe("/ERP42_steer", 1, &VehicleControl::steerCallback, this);
-
     target_velocity_pub = nh_.advertise<std_msgs::Float64>("/target_velocity", 1);
-
-    //is_curve_sub_ = nh_.subscribe("/is_curve", 1, &VehicleControl::isCurveCallback, this);
     is_curve_sub_ = nh_.subscribe<fusion_track::IsCurve>("/is_curve", 1, &VehicleControl::isCurveCallback, this);
     ready_curve_sub_ = nh_.subscribe<fusion_track::ReadyToCurve>("/ready_curve", 1, &VehicleControl::readyCurveCallback, this);
-
-    //gear_sub = nh_.subscribe("/ERP42_gear", 1, &VehicleControl::gearCallback, this);
-    //gear_sub = nh_.subscribe<control_msgs::Gear>("/ERP42_gear", 1, &VehicleControl::gearCallback, this);
-
-
 }
 
 void VehicleControl::ldControl() {
-    // if(current_vel <= 0) {
-    //     ld = 1.9;
-    // } else {
-    //     ld = std::min(3.6 + 0.1 * current_vel, 7.0);
-    // }
-
     if(current_vel <=0){
         ld = 0.9; //1.9
     }
@@ -99,7 +85,6 @@ void VehicleControl::yDiffCallback(const fusion_track::TrackCenter::ConstPtr& tr
 
     double steering;
     vehicle_msgs::Waypoint forward_point;
-    //std::tie(steering, forward_point, std::ignore) = pp_controller_.steering_angle(waypoints);
     std::tie(steering, forward_point, std::ignore) = pp_controller_.steering_angle(waypoints, ld);
 
     ctrl_msg.steering = steering;
@@ -124,12 +109,6 @@ void VehicleControl::steerCallback(const std_msgs::Float32::ConstPtr& steer_data
     ROS_INFO("===Current ANGLE: %f===", steering_angle);
 }
 
-// 현재 기어
-// void VehicleControl::gearCallback(const std_msgs::Float64::ConstPtr& gear_data) { //이거 타입 나중에 확인해봐야징
-//     gear_msg = gear_data->data;
-//     ROS_INFO("===Current GEAR: %d===", gear_msg);
-// }
-
 void VehicleControl::isCurveCallback(const fusion_track::IsCurve::ConstPtr& msg) {
     is_curve_ = msg->data;  
 }
@@ -141,8 +120,6 @@ void VehicleControl::readyCurveCallback(const fusion_track::ReadyToCurve::ConstP
     ReadyToCurve_x_b = ReadyToCurve->ReadyToCurve_x_b;  
     ReadyToCurve_y_b = ReadyToCurve->ReadyToCurve_y_b;
     ROS_WARN("Received ReadyToCurve: Ready = %d", Ready);
-    //ROS_WARN("Received ReadyToCurve: Ready = %d, x = %f, y = %f", Ready, ReadyToCurve_x, ReadyToCurve_y);
-
 }
 
 
@@ -150,19 +127,11 @@ void VehicleControl::readyCurveCallback(const fusion_track::ReadyToCurve::ConstP
 //PID써서 엑셀 브레이크 계산
 void VehicleControl::updateControlCmd(double target_velocity) {
     ROS_INFO("updateControlCmd is called.");
-    
-    //double control_input = pid_controller_.pid(curvel_msg.velocity, target_velocity);
 
     if (is_curve_ == 1) {
         // 커브가 감지됐을 때(노란색 우회전)
         ROS_WARN("CURVE: %d", is_curve_);
         ROS_WARN("============RIGHT CURVE==============");
-        // //target_velocity = 30;  // 커브에서는 30.0의 속도로 제한
-        // ctrl_msg.brake = 100;
-        // target_velocity = 10;//50
-        // // 추가
-        // ctrl_msg.steering = 18; //20
-        // ctrl_pub_.publish(ctrl_msg);
 
         //기본정렬
         if(ReadyToCurve_y_y>0.5 && ReadyToCurve_y_y<=1){
@@ -217,12 +186,6 @@ void VehicleControl::updateControlCmd(double target_velocity) {
         // 커브가 감지됐을 때(파란색 좌회전)
         ROS_WARN("CURVE: %d", is_curve_);
         ROS_WARN("============LEFT CURVE==============");
-        // //target_velocity = 30;  // 커브에서는 30.0의 속도로 제한
-        // ctrl_msg.brake = 100;
-        // target_velocity = 10; //50
-        // // 추가
-        // ctrl_msg.steering = -18; //-20
-        // ctrl_pub_.publish(ctrl_msg);
 
         //기본정렬
         if(ReadyToCurve_y_b>0.5 && ReadyToCurve_y_b<=1){
@@ -276,38 +239,20 @@ void VehicleControl::updateControlCmd(double target_velocity) {
 
     else if (is_curve_ == 0){
         ctrl_msg.brake = 0;
-            //ctrl_msg.accel = 60;
         target_velocity = 70;
-        // if(Ready){
-        //     ROS_WARN("++++++++++slow mode+++++++++");
-        //     target_velocity = 40;
-        // }
-        // else{
-        //     ctrl_msg.brake = 0;
-        //     //ctrl_msg.accel = 60;
-        //     target_velocity = 70;
-        //     //ctrl_msg.steering = pp_controller_.steering_angle(waypoints, ld); 
-        //     //ROS_INFO("STEERING: %f", steering);
-        // }
-        // ctrl_pub_.publish(ctrl_msg);
     }
 
-    //double control_input = pid_controller_.pid(target_velocity, curvel_msg.velocity);
     double control_input = pid_controller_.pid(target_velocity, current_vel);
 
     ROS_INFO("control_input: %f", control_input);
-
-    
 
     if (control_input > 0) {
         ctrl_msg.accel = target_velocity;
         ctrl_msg.brake = 0;
     } 
     else {
-        //ctrl_msg.accel = 0;
         ctrl_msg.brake = -control_input;
         ctrl_msg.accel = target_velocity;
-        
     }
     ctrl_pub_.publish(ctrl_msg);
 }

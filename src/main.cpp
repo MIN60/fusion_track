@@ -21,9 +21,7 @@ int main(int argc, char** argv) {
 
     ros::Rate rate(10); 
     
-    
     while (ros::ok()) {
-        //ros::spinOnce();
         ros::spin(); 
     
         vehicle_control.updateControlCmd(150); 

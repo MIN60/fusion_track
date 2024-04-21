@@ -14,13 +14,9 @@ FusionTrack::FusionTrack(ros::NodeHandle& nh)
     : nh_(nh), track_center_x(0.0), track_center_y(0.0)
 {
     sf_info_sub_ = nh_.subscribe("/sf_info", 5, &FusionTrack::sfInfoCallback, this);
-   // y_center_diff_pub_ = nh_.advertise<std_msgs::Float64>("/y_center_diff", 1);
     y_center_diff_pub_ = nh_.advertise<fusion_track::TrackCenter>("/y_center_diff", 5);
     curve_pub_ = nh_.advertise<fusion_track::IsCurve>("/is_curve", 5);
     ready_curve_pub_ = nh_.advertise<fusion_track::ReadyToCurve>("/ready_curve", 5);
-    
-
-
     visual_marker = std::make_unique<VisualMarker>(nh_);
 }
 
@@ -31,15 +27,10 @@ void FusionTrack::sfInfoCallback(const cam_lidar_calib::sf_Info::ConstPtr& msg)
     double DISTANCE_LIMIT = 15.0;
     int iscurve = 0; //0이 직진, 1이 우회전 2가 좌회전
     double nearest_yellow_x = std::numeric_limits<double>::max();
-    //double nearest_yellow_y;
     double nearest_yellow_y = std::numeric_limits<double>::max();  
-    
-    
     double nearest_blue_x = std::numeric_limits<double>::max();
-    //double nearest_blue_y;
     double nearest_blue_y = std::numeric_limits<double>::max();  
     
-
     bool detected_yellow = false;
     bool detected_blue = false;
 
@@ -96,85 +87,64 @@ void FusionTrack::sfInfoCallback(const cam_lidar_calib::sf_Info::ConstPtr& msg)
         ready_curve_pub_.publish(ReadyToCurve);
     }
 
-    
-
-    // 라바콘 둘 다 보일 경우 노란색만 따라감
+    // 라바콘 둘 다 보일 경우 중점 추종
     if(detected_yellow && detected_blue){
-        //if(nearest_yellow_x != 0 && nearest_blue_x != 0){    
         ROS_WARN("++++++2CONE DETECT+++++++");
         ROS_INFO("Original Yellow cone: %f", nearest_yellow_y);
         ROS_INFO("Original Blue cone: %f", nearest_blue_y);
-        // if(nearest_yellow_y >= 0){
-        //     nearest_blue_y = -(nearest_yellow_y+cone_interval); // 반대편 대칭에 파란색
-        //     nearest_blue_x = nearest_yellow_x;
-        // }
-        // else{
-        //     nearest_blue_y = -(nearest_yellow_y-cone_interval); // 반대편 대칭에 파란색
-        //     nearest_blue_x = nearest_yellow_x;
-        // }
         track_center_y = (nearest_yellow_y + nearest_blue_y) / 2.0;
         track_center_x = (nearest_yellow_x + nearest_blue_x) / 2.0;
         iscurve = 0;
-        //}
     }
 
     // 곡선 주행(한 쪽 라바콘만 보일 경우)
-    // 노란색만 보일 경우
-    // std::numeric_limits<double>::max()
+    // 노란색 라바콘만 보일 경우
     else if (detected_yellow && !detected_blue) {
-        //if(nearest_yellow_x != 0 && nearest_blue_x == 0){ 
         ROS_WARN("+++++++++1CONE(Yellow) DETECT++++++++++");
         iscurve = 1;
         
         if(nearest_yellow_y >=-0.5 && nearest_yellow_y<=0.5){
             ROS_INFO("노란색 라바콘 임");
         }
-        // double 타입의 최대값
-        // nearest_blue_y = -nearest_yellow_y; // 반대편 대칭에 파란색
-        // nearest_blue_x = nearest_yellow_x;
+
         ROS_INFO("Original Yellow cone: %f", nearest_yellow_y);
         ROS_INFO("Original Blue cone: %f", nearest_blue_y);
         ROS_WARN("CURVE");
 
+        // 반대편 대칭에 파란색 라바콘이 있다고 가정
         if(nearest_yellow_y >= 0){
-            nearest_blue_y = -(nearest_yellow_y+cone_interval); // 반대편 대칭에 파란색
+            nearest_blue_y = -(nearest_yellow_y+cone_interval); 
             nearest_blue_x = nearest_yellow_x;
         }
         else{
-            nearest_blue_y = -(nearest_yellow_y-cone_interval); // 반대편 대칭에 파란색
+            nearest_blue_y = -(nearest_yellow_y-cone_interval);
             nearest_blue_x = nearest_yellow_x;
         }
         iscurve = 1;
-
-        //}
     }
 
-    // 파란색만 보일 경우
+    // 파란색 라바콘만 보일 경우
     else if (detected_blue && !detected_yellow) {
-        //if(nearest_yellow_x == 0 && nearest_blue_x != 0){ 
         ROS_WARN("+++++++++1CONE(Blue) DETECT++++++++++");
-        //nearest_yellow_y = -nearest_blue_y; // 반대편 대칭에 노란색
-        //nearest_yellow_x = nearest_blue_x;
         iscurve = 2;
         ROS_INFO("Original Blue cone: %f", nearest_blue_y);
         ROS_WARN("CURVE");
+        // 반대편 대칭에 노란색 라바콘 생성
         if(nearest_blue_y >= 0){
-            nearest_yellow_y = -(nearest_blue_y+cone_interval); // 반대편 대칭에 노란색
+            nearest_yellow_y = -(nearest_blue_y+cone_interval); 
             nearest_yellow_x = nearest_blue_x;
         }
         else{
-            nearest_yellow_y = -(nearest_blue_y-cone_interval); // 반대편 대칭에 노란색
+            nearest_yellow_y = -(nearest_blue_y-cone_interval);
             nearest_yellow_x = nearest_blue_x;
         }
         iscurve = 2;
-        //}
     }
 
     track_center_y = (nearest_yellow_y + nearest_blue_y) / 2.0;
     track_center_x = (nearest_yellow_x + nearest_blue_x) / 2.0;
 
     fusion_track::TrackCenter track_center_msg;
-
 
     track_center_msg.x = track_center_x;
     track_center_msg.y = track_center_y;
@@ -189,11 +159,7 @@ void FusionTrack::sfInfoCallback(const cam_lidar_calib::sf_Info::ConstPtr& msg)
     fusion_track::IsCurve curve_msg;
     curve_msg.data = iscurve;
     curve_pub_.publish(curve_msg);
-
 }
-
-
-
 
 fusion_track::TrackCenter FusionTrack::getLaneCenterY()
 {

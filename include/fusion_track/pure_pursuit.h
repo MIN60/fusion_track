@@ -18,14 +18,10 @@ private:
     double steering;
     std_msgs::Float32 current_vel;
 
-    //double avg_steering;
-
 public:
     PurePursuit();
 
     void getVelStatus(const std_msgs::Float32& msg);
-    //std::tuple<double, vehicle_msgs::Waypoint, double> steering_angle(const vehicle_msgs::WaypointsArray& newpoints);
-    // pure_pursuit.h
     std::tuple<double, vehicle_msgs::Waypoint, double> steering_angle(const vehicle_msgs::WaypointsArray& newpoints, double ld);
 
     double ld;
