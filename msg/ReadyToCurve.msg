@@ -1,0 +1,5 @@
+bool Ready
+float64 ReadyToCurve_x_b
+float64 ReadyToCurve_y_b
+float64 ReadyToCurve_x_y
+float64 ReadyToCurve_y_y
