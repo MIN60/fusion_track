@@ -23,3 +23,7 @@ rviz를 통해 시각화된 마커를 확인할 수 있습니다.
 ```C++
 rosrun fusion_track fusion_track_node
 ```
+
+## 결과 영상
+
+[![Video Label](http://img.youtube.com/vi/MxcFTDa7Q_g/0.jpg)](https://youtu.be/MxcFTDa7Q_g)
